@@ -3,7 +3,7 @@
 #   check_statuspageio_status.rb
 #
 # DESCRIPTION:
-#   Interacts with StatusPage.io page to check the system status of whatever service's api endpoint you want check.
+#   Interacts with StatusPage.io page to check the system status of the service's api endpoint you want to monitor.
 #
 # OUTPUT:
 #   plain-text
@@ -34,7 +34,7 @@ require 'sensu-plugin/check/cli'
 
 # Check the status of Github via their Status JSON API
 
-class CheckSystemStatus < Sensu::Plugin::Check::CLI
+class StatusPageIO < Sensu::Plugin::Check::CLI
   
   option :endpoint,
          description: 'StatusPage.io endpoint url',
@@ -43,7 +43,7 @@ class CheckSystemStatus < Sensu::Plugin::Check::CLI
          required: true
     
   def run
-    # This endpoint has the last message + status
+    # StatusPage.io endpoint that's been specified
     api_endpoint = config[:endpoint]
 
     # Get JSON from endpoint
@@ -51,16 +51,17 @@ class CheckSystemStatus < Sensu::Plugin::Check::CLI
     http = Net::HTTP.new(uri.host, uri.port)
     json = JSON.parse http.get(uri.request_uri).body
 
+    # Status messages for check results
     status_description = json['status']['description']
     status_indicator = json['status']['indicator']
     service_name = json['page']['name']
       
-    # Keys are status, body, created_on
+    # Check state
     if status_indicator == "none"
       ok "#{service_name} is operational, message: '#{status_description}'"
-    elsif status_indicator == "major"
-      warning "#{service_name} is experiencing '#{status_indicator}' issues, message: '#{status_description}', reason: '#{json['incidents'][0]['name']}'"
     elsif status_indicator == "minor"
+      warning "#{service_name} is experiencing '#{status_indicator}' issues, message: '#{status_description}', reason: '#{json['incidents'][0]['name']}'"
+    elsif status_indicator == "major"
       critical "#{service_name} is experiencing '#{status_indicator}' issues, message: '#{status_description}', reason: '#{json['incidents'][0]['name']}'"
     else 
       unknown "The current operational status of #{service_name} is unknown"
